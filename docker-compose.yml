@@ -1,0 +1,103 @@
+# This is docker-compose file
+# which can be used to run Opensearch cluster.
+#
+# Please note, that following settings provide
+# password protected Opensearch (also with SSL enabled)
+#
+# Usage:
+#   sudo sysctl -w vm.max_map_count=262144
+#   export ES_HEAP_SIZE=1g
+#   docker-compose up -d
+
+version: '3.5'
+
+# Database shared environment for all cluster nodes
+x-opensearch-env: &opensearch-env
+  # Heap size
+  OPENSEARCH_JAVA_OPTS: "-Xms${ES_HEAP_SIZE} -Xmx${ES_HEAP_SIZE}"
+
+  # Cluster name
+  cluster.name: "opensearch-docker-cluster"
+
+  bootstrap.memory_lock: "true" # along with the memlock settings, disables swapping
+  discovery.seed_hosts: "opensearch-node1,opensearch-node2,opensearch-node3"
+  cluster.initial_master_nodes: "opensearch-node1,opensearch-node2,opensearch-node3"
+
+services:
+  opensearch-node1:
+    image: nexenta/fusion-opensearch:1.3.5
+    container_name: opensearch-node1
+    restart: always
+    environment:
+      << : *opensearch-env
+      node.name: "opensearch-node1"
+      plugins.security.ssl.transport.enabled_protocols: "TLSv1.3"
+      plugins.security.ssl.http.enabled_protocols: "TLSv1.2, TLSv1.3"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
+        hard: 65536
+    volumes:
+      - esdata1:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600 # required for Performance Analyzer
+    networks:
+      - esnet
+
+  opensearch-node2:
+    image: nexenta/fusion-opensearch:1.3.5
+    container_name: opensearch-node2
+    restart: always
+    environment:
+      << : *opensearch-env
+      node.name: "opensearch-node2"
+      plugins.security.ssl.transport.enabled_protocols: "TLSv1.3"
+      plugins.security.ssl.http.enabled_protocols: "TLSv1.2, TLSv1.3"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - esdata2:/usr/share/opensearch/data
+    networks:
+      - esnet
+
+  opensearch-node3:
+    image: nexenta/fusion-opensearch:1.3.5
+    container_name: opensearch-node3
+    restart: always
+    environment:
+      << : *opensearch-env
+      node.name: "opensearch-node3"
+      plugins.security.ssl.transport.enabled_protocols: "TLSv1.3"
+      plugins.security.ssl.http.enabled_protocols: "TLSv1.2, TLSv1.3"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - esdata3:/usr/share/opensearch/data
+    networks:
+      - esnet
+
+volumes:
+  esdata1:
+    driver: local
+  esdata2:
+    driver: local
+  esdata3:
+    driver: local
+
+networks:
+  esnet:
+    driver: bridge
